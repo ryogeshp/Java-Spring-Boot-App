@@ -59,7 +59,7 @@ pipeline {
                     sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/delpoyment.yml
                     git add Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/delpoyment.yml
                     git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://$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@github.com/$ryogeshp/$r.yogesh_p HEAD:main
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
                 '''
             }
         }
