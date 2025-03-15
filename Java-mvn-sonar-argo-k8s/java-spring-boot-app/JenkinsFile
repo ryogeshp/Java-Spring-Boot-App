@@ -2,43 +2,73 @@ pipeline {
   agent {
     docker {
       image 'ryogeshp/yogeshp_mvn_java_docker:v1.0'
-      args ''  // No root user or Docker socket mount
+      args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
   stages {
-    stage('Cleanup') {
-      steps {
-        cleanWs()  // Clean workspace before checkout
-      }
-    }
     stage('Checkout') {
       steps {
-        checkout([
-          $class: 'GitSCM',
-          branches: [[name: 'main']],
-          extensions: [
-            [$class: 'RelativeTargetDirectory', relativeTargetDir: 'Java-mvn-sonar-argo-k8s']
-          ],
-          userRemoteConfigs: [
-            [
-              url: 'https://github.com/ryogeshp/r.yogesh_p.git',
-              credentialsId: 'github'
-            ]
-          ]
-        ])
+        sh 'echo passed'
+        git branch: 'main', url: 'https://github.com/ryogeshp/r.yogesh_p.git' 
       }
     }
     stage('Build and Test') {
       steps {
-        sh '''
-          cd Java-mvn-sonar-argo-k8s/java-spring-boot-app
-          mvn clean package
-          chmod -R a+rwX target  # Fix permissions
-        '''
+        sh 'ls -ltr'
+        sh 'cd Java-mvn-sonar-argo-k8s/java-spring-boot-app && mvn clean package' 
       }
     }
-    stage('Static Code Analysis') { ... }
-    stage('Build and Push Docker Image') { ... }
-    stage('Update Deployment File') { ... }
+    stage('Static Code Analysis') {
+      environment {
+        SONAR_URL = "http://54.221.10.162:9000"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+          sh 'cd Java-mvn-sonar-argo-k8s/java-spring-boot-app && mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+        }
+      }
+    }
+    stage('Build and Push Docker Image') {
+      environment {
+        DOCKER_IMAGE = "ryogeshp/jenkins-hero:${BUILD_NUMBER}"
+        REGISTRY_CREDENTIALS = credentials('docker-cred')
+      }
+      steps {
+        script {
+            sh 'cd Java-mvn-sonar-argo-k8s/java-spring-boot-app && docker build -t ${DOCKER_IMAGE} .'
+            def dockerImage = docker.image("${DOCKER_IMAGE}")
+            docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
+                dockerImage.push()
+            }
+        }
+      }
+    }
+    stage('Update Deployment File') {
+      environment {
+        GIT_REPO_NAME = "Yogi-Metadata"
+        GIT_USER_NAME = "PROJECTS-NEMCO"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+          script {
+            sh 'echo "*********************************************GIT PUSH DEPLOYMENT VERSION*********************************************"'
+            def filePath = "${env.WORKSPACE}/Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml"
+            def buildNumber = "${BUILD_NUMBER}"
+            sh """
+              git config user.email "mujahed.trainer@gmail.com"
+              git config user.name "mujahed85"
+              echo 'File path: ${filePath}'
+              if [ -f '${filePath}' ]; then echo 'File exists'; else echo 'File does not exist'; fi
+              cat '${filePath}'
+              sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" '${filePath}'
+              git status
+              git add '${filePath}'
+              git commit -m "Update deployment image to version ${buildNumber}"
+              git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+            """
+          }
+        }
+      }
+    }
   }
 }
