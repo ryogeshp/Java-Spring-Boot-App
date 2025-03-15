@@ -45,26 +45,36 @@ pipeline {
     }
     stage('Update Deployment File') {
       environment {
-        GIT_REPO_NAME = "r.yogesh_p"
-        GIT_USER_NAME = "ryogeshp"
+        GIT_REPO_NAME = "Yogi-Metadata"
+        GIT_USER_NAME = "PROJECTS-NEMCO"
       }
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           script {
-            sh 'echo "*********************************************GIT PUSH DEPLOYMENT VERSION*********************************************"'
-            def filePath = "${env.WORKSPACE}/Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml"
+            sh 'echo "******** GIT PUSH DEPLOYMENT VERSION ********"'
+            def repoDir = "${env.WORKSPACE}/${GIT_REPO_NAME}"
+            def filePath = "${repoDir}/Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml"
             def buildNumber = "${BUILD_NUMBER}"
             sh """
+              # Ensure repository exists and clone if missing
+              if [ ! -d "${repoDir}/.git" ]; then
+                rm -rf ${repoDir}
+                git clone https://$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git ${repoDir}
+              fi
+
+              cd ${repoDir}
               git config user.email "mujahed.trainer@gmail.com"
               git config user.name "mujahed85"
+
               echo 'File path: ${filePath}'
-              if [ -f '${filePath}' ]; then echo 'File exists'; else echo 'File does not exist'; fi
+              if [ -f '${filePath}' ]; then echo 'File exists'; else echo 'File does not exist'; exit 1; fi
               cat '${filePath}'
+
               sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" '${filePath}'
               git status
               git add '${filePath}'
               git commit -m "Update deployment image to version ${buildNumber}"
-              git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+              git push https://$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
             """
           }
         }
