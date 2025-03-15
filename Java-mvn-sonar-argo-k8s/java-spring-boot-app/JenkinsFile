@@ -9,13 +9,12 @@ pipeline {
     stage('Checkout') {
       steps {
         sh 'echo passed'
-        //git branch: 'main', url: 'https://github.com/ryogeshp/r.yogesh_p.git' 
+        git branch: 'main', url: 'https://github.com/ryogeshp/r.yogesh_p.git' 
       }
     }
     stage('Build and Test') {
       steps {
         sh 'ls -ltr'
-        // build the project and create a JAR file
         sh 'cd Java-mvn-sonar-argo-k8s/java-spring-boot-app && mvn clean package' 
       }
     }
@@ -32,7 +31,6 @@ pipeline {
     stage('Build and Push Docker Image') {
       environment {
         DOCKER_IMAGE = "ryogeshp/jenkins-hero:${BUILD_NUMBER}"
-        // DOCKERFILE_LOCATION = "Java-mvn-sonar-argo-k8s/java-spring-boot-app/Dockerfile"
         REGISTRY_CREDENTIALS = credentials('docker-cred')
       }
       steps {
@@ -53,14 +51,19 @@ pipeline {
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
+                    cd Java-mvn-sonar-argo-k8s
                     git config user.email "rjprajapati08@gmail.com"
                     git config user.name "ryogeshp"
                     BUILD_NUMBER=${BUILD_NUMBER}
-                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/delpoyment.yml
-                    git add Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/delpoyment.yml
+                    sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-spring-boot-app-manifests/deployment.yml
+                    git add java-spring-boot-app-manifests/deployment.yml
                     git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
-                '''
+
+                    echo "Checking Git repository status..."
+                    git status
+                    
+                    git push https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git HEAD:main
+                '''  
             }
         }
     }
