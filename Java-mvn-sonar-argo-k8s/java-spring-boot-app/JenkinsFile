@@ -51,37 +51,42 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           script {
-            sh 'echo "******** GIT PUSH DEPLOYMENT VERSION ********"'
-            def repoDir = "${env.WORKSPACE}/${GIT_REPO_NAME}"
-            def filePath = "${repoDir}/Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml"
-            def buildNumber = "${BUILD_NUMBER}"
             sh """
+              echo "******** GIT PUSH DEPLOYMENT VERSION ********"
+              REPO_DIR="${env.WORKSPACE}/${GIT_REPO_NAME}"
+              FILE_PATH="\${REPO_DIR}/Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml"
+
               # Clone repository if not already present
-              if [ ! -d "${repoDir}/.git" ]; then
-                rm -rf ${repoDir}
-                git clone https://\$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git ${repoDir}
+              if [ ! -d "\${REPO_DIR}/.git" ]; then
+                rm -rf "\${REPO_DIR}"
+                git clone https://\$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git "\${REPO_DIR}"
               fi
 
-              cd ${repoDir}
-              echo 'Listing repository structure for debugging:'
+              cd "\${REPO_DIR}"
+              echo "Listing repository structure for debugging:"
               ls -R
 
               git config user.email "mujahed.trainer@gmail.com"
               git config user.name "mujahed85"
 
-              echo 'File path: ${filePath}'
-              if [ -f '${filePath}' ]; then 
-                echo 'File exists'; 
+              echo "File path: \${FILE_PATH}"
+              if [ -f "\${FILE_PATH}" ]; then 
+                echo "File exists"; 
               else 
-                echo 'File does not exist'; 
+                echo "File does not exist"; 
                 exit 1; 
               fi
-              cat '${filePath}'
 
-              sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" '${filePath}'
+              # Pull latest changes from remote
+              git fetch origin
+              git pull --rebase origin main || (git rebase --abort && git pull --no-rebase origin main)
+
+              # Update image tag in deployment file
+              sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" "\${FILE_PATH}"
+
               git status
-              git add '${filePath}'
-              git commit -m "Update deployment image to version ${buildNumber}" || echo "No changes to commit"
+              git add "\${FILE_PATH}"
+              git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes to commit"
               git push https://\$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
             """
           }
