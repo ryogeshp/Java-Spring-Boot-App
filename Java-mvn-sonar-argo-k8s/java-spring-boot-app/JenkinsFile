@@ -2,39 +2,31 @@ pipeline {
     agent {
         docker {
             image 'ryogeshp/yogeshp_mvn_java_docker:v1.0'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock' 
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
+
     environment {
         SONAR_URL = "http://54.85.94.247:9000"
         DOCKER_IMAGE = "ryogeshp/jenkins-hero:${BUILD_NUMBER}"
+        REGISTRY_CREDENTIALS = credentials('docker-cred')
         GIT_REPO_NAME = "r.yogesh_p"
         GIT_USER_NAME = "ryogeshp"
     }
+
     stages {
-        
         stage('Checkout') {
             steps {
-                script {
-                    echo "Checking out repository..."
-                    checkout scm
-                    sh '''
-                        echo "Current Directory: $(pwd)"
-                        echo "Checking .git directory..."
-                        ls -la
-                        git status || echo "ERROR: Not a git repository!"
-                    '''
-                }
+                sh 'rm -rf Java-mvn-sonar-argo-k8s || true' // Clean workspace
+                git branch: 'main', url: 'https://github.com/ryogeshp/r.yogesh_p.git'
+                sh 'ls -la && git rev-parse --is-inside-work-tree' // Debugging
             }
         }
 
         stage('Build and Test') {
             steps {
                 sh '''
-                    echo "Listing directory contents..."
-                    ls -ltr
                     cd Java-mvn-sonar-argo-k8s/java-spring-boot-app
-                    echo "Building project..."
                     mvn clean package
                 '''
             }
@@ -45,7 +37,6 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
                     sh '''
                         cd Java-mvn-sonar-argo-k8s/java-spring-boot-app
-                        echo "Running SonarQube Analysis..."
                         mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}
                     '''
                 }
@@ -55,18 +46,13 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    try {
-                        sh '''
-                            cd Java-mvn-sonar-argo-k8s/java-spring-boot-app
-                            echo "Building Docker image..."
-                            docker build -t ${DOCKER_IMAGE} .
-                        '''
-                        def dockerImage = docker.image("${DOCKER_IMAGE}")
-                        docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
-                            dockerImage.push()
-                        }
-                    } catch (Exception e) {
-                        echo "Warning: Docker push failed. Ensure credentials are configured!"
+                    sh '''
+                        cd Java-mvn-sonar-argo-k8s/java-spring-boot-app
+                        docker build -t ${DOCKER_IMAGE} .
+                    '''
+                    def dockerImage = docker.image("${DOCKER_IMAGE}")
+                    docker.withRegistry('https://index.docker.io/v1/', "docker-cred") {
+                        dockerImage.push()
                     }
                 }
             }
@@ -77,23 +63,20 @@ pipeline {
                 withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                     sh '''
                         echo "Checking if repository is valid..."
-                        if [ ! -d "Java-mvn-sonar-argo-k8s" ]; then
-                            echo "ERROR: Directory 'Java-mvn-sonar-argo-k8s' not found!"
+                        if [ ! -d Java-mvn-sonar-argo-k8s ]; then
+                            echo "ERROR: Repository folder not found!"
                             exit 1
                         fi
                         cd Java-mvn-sonar-argo-k8s
-                        if [ ! -d ".git" ]; then
+                        if [ ! -d .git ]; then
                             echo "ERROR: Not a Git repository!"
                             exit 1
                         fi
-                        echo "Configuring Git..."
                         git config user.email "rjprajapati08@gmail.com"
                         git config user.name "ryogeshp"
-                        echo "Updating deployment file..."
                         sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" java-spring-boot-app-manifests/deployment.yml
                         git add java-spring-boot-app-manifests/deployment.yml
                         git commit -m "Update deployment image to version ${BUILD_NUMBER}"
-                        echo "Pushing changes to GitHub..."
                         git push https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git HEAD:main
                     '''
                 }
