@@ -8,10 +8,12 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        // Add credentials for private repository access
         git branch: 'main', 
            url: 'https://github.com/ryogeshp/r.yogesh_p.git',
-           credentialsId: 'github'  // Required for private repos
+           credentialsId: 'github',  // Add credentials here
+           extensions: [
+               [$class: 'RelativeTargetDirectory', relativeTargetDir: 'Java-mvn-sonar-argo-k8s']
+           ]
       }
     }
     stage('Build and Test') {
@@ -32,7 +34,7 @@ pipeline {
     }
     stage('Build and Push Docker Image') {
       environment {
-        DOCKER_IMAGE = "ryogeshp/jenkins-hero:${env.BUILD_NUMBER}"  // Use env variable
+        DOCKER_IMAGE = "ryogeshp/jenkins-hero:${env.BUILD_NUMBER}"
       }
       steps {
         script {
@@ -52,19 +54,10 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           sh '''
-            set -e  # Exit immediately on error
-
-            # Navigate to cloned repository directory
-            cd r.yogesh_p
-
-            # Configure Git locally (inside repository)
+            set -e
             git config --local user.email "rjprajapati08@gmail.com"
             git config --local user.name "ryogeshp"
-
-            # Update image tag in deployment.yml
             sed -i "s/replaceImageTag/${env.BUILD_NUMBER}/g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
-
-            # Commit and push changes
             git add Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
             git commit -m "Update deployment image to version ${env.BUILD_NUMBER}"
             git push "https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME" HEAD:main
