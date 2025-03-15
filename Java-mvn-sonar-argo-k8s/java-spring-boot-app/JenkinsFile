@@ -8,12 +8,20 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', 
-           url: 'https://github.com/ryogeshp/r.yogesh_p.git',
-           credentialsId: 'github',  // Add credentials here
-           extensions: [
-               [$class: 'RelativeTargetDirectory', relativeTargetDir: 'Java-mvn-sonar-argo-k8s']
-           ]
+        checkout([
+          $class: 'GitSCM',
+          branches: [[name: 'main']],
+          extensions: [
+            // Clone into a subdirectory
+            [$class: 'RelativeTargetDirectory', relativeTargetDir: 'Java-mvn-sonar-argo-k8s']
+          ],
+          userRemoteConfigs: [
+            [
+              url: 'https://github.com/ryogeshp/r.yogesh_p.git',
+              credentialsId: 'github'  // Required for private repos
+            ]
+          ]
+        ])
       }
     }
     stage('Build and Test') {
@@ -54,11 +62,20 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
           sh '''
-            set -e
+            set -e  # Exit on error
+
+            # Navigate to the cloned directory
+            cd Java-mvn-sonar-argo-k8s
+
+            # Configure Git
             git config --local user.email "rjprajapati08@gmail.com"
             git config --local user.name "ryogeshp"
-            sed -i "s/replaceImageTag/${env.BUILD_NUMBER}/g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
-            git add Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
+
+            # Update deployment.yml
+            sed -i "s/replaceImageTag/${env.BUILD_NUMBER}/g" java-spring-boot-app-manifests/deployment.yml
+
+            # Commit and push
+            git add java-spring-boot-app-manifests/deployment.yml
             git commit -m "Update deployment image to version ${env.BUILD_NUMBER}"
             git push "https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME" HEAD:main
           '''
