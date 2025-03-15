@@ -81,7 +81,7 @@ pipeline {
               sed -i "s/replaceImageTag/${BUILD_NUMBER}/g" '${filePath}'
               git status
               git add '${filePath}'
-              git commit -m "Update deployment image to version ${buildNumber}"
+              git commit -m "Update deployment image to version ${buildNumber}" || echo "No changes to commit"
               git push https://\$GITHUB_TOKEN@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME}.git HEAD:main
             """
           }
