@@ -45,8 +45,8 @@ pipeline {
     }
     stage('Update Deployment File') {
       environment {
-        GIT_REPO_NAME = "Yogi-Metadata"
-        GIT_USER_NAME = "PROJECTS-NEMCO"
+        GIT_REPO_NAME = "r.yogesh_p"
+        GIT_USER_NAME = "ryogeshp"
       }
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
