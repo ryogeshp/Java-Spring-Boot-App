@@ -15,6 +15,14 @@ pipeline {
     }
 
     stages {
+        stage('Fix Git Safe Directory') {
+            steps {
+                sh '''
+                    git config --global --add safe.directory /var/lib/jenkins/workspace/Java-spring-boot-app
+                '''
+            }
+        }
+
         stage('Checkout') {
             steps {
                 sh 'rm -rf Java-mvn-sonar-argo-k8s || true' // Clean workspace
