@@ -53,7 +53,6 @@ pipeline {
         steps {
             withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                 sh '''
-                    cd Java-mvn-sonar-argo-k8s
                     git config user.email "rjprajapati08@gmail.com"
                     git config user.name "ryogeshp"
                     BUILD_NUMBER=${BUILD_NUMBER}
