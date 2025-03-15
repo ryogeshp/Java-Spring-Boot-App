@@ -70,7 +70,7 @@ pipeline {
             cd /tmp/temp_repo
 
             # Update the Kubernetes deployment manifest with the current BUILD_NUMBER
-            sed -i "s|ryogeshp/jenkins-hero:replaceImageTag|ryogeshp/jenkins-hero:${BUILD_NUMBER}|g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
+            sed -i "s|image:.*|image: ryogeshp/jenkins-hero:${BUILD_NUMBER}|g" Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
 
             # Stage and commit the changes. If there are no changes, continue without error.
             git add Java-mvn-sonar-argo-k8s/java-spring-boot-app-manifests/deployment.yml
