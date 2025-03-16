@@ -52,13 +52,16 @@ pipeline {
                 withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                     sh '''
                         #!/bin/bash
-                        set -x  # Enable shell tracing for debugging
+                        set -x  # Enable debugging
 
                         # Check if Git is installed
                         if ! command -v git &> /dev/null; then
                             echo "Error: Git is not installed."
                             exit 1
                         fi
+
+                        # Confirm Git is found
+                        echo "Git is installed at: $(command -v git)"
 
                         # Check if this is a Git repository
                         if ! git rev-parse --is-inside-work-tree &> /dev/null; then
@@ -76,7 +79,7 @@ pipeline {
                             exit 1
                         fi
 
-                        # Update the image tag in the deployment file
+                        # Update the image tag
                         sed -i "s|image: ryogeshp/jenkins-hero:replaceImageTag|image: ryogeshp/jenkins-hero:${BUILD_NUMBER}|g" "${MANIFEST_FILE}"
 
                         # Verify the update
