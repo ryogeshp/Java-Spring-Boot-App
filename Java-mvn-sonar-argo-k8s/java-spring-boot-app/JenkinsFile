@@ -52,44 +52,14 @@ pipeline {
                 withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
                     sh '''
                         #!/bin/bash
-                        set -x  # Enable debugging
-
-                        # Check if Git is installed
+                        set -x
+                        echo "Starting Git check..."
                         if ! command -v git &> /dev/null; then
                             echo "Error: Git is not installed."
                             exit 1
                         fi
-
-                        # Confirm Git is found
-                        echo "Git is installed at: $(command -v git)"
-
-                        # Check if this is a Git repository
-                        if ! git rev-parse --is-inside-work-tree &> /dev/null; then
-                            echo "Error: Not a Git repository."
-                            exit 1
-                        fi
-
-                        # Set Git configuration
-                        git config user.email "rjprajapati08@gmail.com"
-                        git config user.name "ryogeshp"
-
-                        # Check if the manifest file exists
-                        if [ ! -f "${MANIFEST_FILE}" ]; then
-                            echo "Error: ${MANIFEST_FILE} not found"
-                            exit 1
-                        fi
-
-                        # Update the image tag
-                        sed -i "s|image: ryogeshp/jenkins-hero:replaceImageTag|image: ryogeshp/jenkins-hero:${BUILD_NUMBER}|g" "${MANIFEST_FILE}"
-
-                        # Verify the update
-                        echo "Updated image line:"
-                        grep "image:" "${MANIFEST_FILE}"
-
-                        # Commit and push changes
-                        git add "${MANIFEST_FILE}"
-                        git commit -m "Update deployment image to ryogeshp/jenkins-hero:${BUILD_NUMBER}"
-                        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                        echo "Git is installed, proceeding..."
+                        git --version
                     '''
                 }
             }
