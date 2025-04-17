@@ -9,7 +9,7 @@ pipeline {
     stage('Checkout') {
       steps {
         sh 'echo passed'
-        git branch: 'main', url: 'https://github.com/ryogeshp/r.yogesh_p.git'
+        git branch: 'main', url: 'https://github.com/ryogeshp/Java-Spring-Boot-App.git'
       }
     }
     stage('Build and Test') {
@@ -45,7 +45,7 @@ pipeline {
     }
     stage('Update Deployment File') {
       environment {
-        GIT_REPO_NAME = "r.yogesh_p"
+        GIT_REPO_NAME = "Java-Spring-Boot-App"
         GIT_USER_NAME = "ryogeshp"
       }
       steps {
